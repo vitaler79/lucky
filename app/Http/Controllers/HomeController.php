@@ -120,4 +120,39 @@ class HomeController extends Controller
 
         return redirect()->route('home');
     }
+
+    public function moneyToAccount(Request $request)
+    {
+        $userId = \Auth::user()->id;
+
+        try{
+
+            DB::beginTransaction();
+
+            if (isset($request->id)) {
+                $raffleId = (int)$request->id;
+
+                $rafflePrize = RafflePrizes::where('id', '=',$raffleId)->where('user_id', '=', $userId)->where('status', '=', 0)->first();
+
+                if (isset($rafflePrize->id)) {
+                    $rafflePrize->status = 2;
+                    $rafflePrize->save();
+
+                    $rate = (float)env("MONEY_TO_ACCOUNT", 2);
+
+                    \Auth::user()->account = \Auth::user()->account + round($rate * $rafflePrize->prize);
+                    \Auth::user()->save();
+                }
+            }
+
+            DB::commit();
+
+        } catch(\Exception $e){
+            DB::rollback();
+
+            echo $e->getMessage();
+        }
+
+        return redirect()->route('home');
+    }
 }
