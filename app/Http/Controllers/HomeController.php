@@ -80,4 +80,44 @@ class HomeController extends Controller
 
         return redirect()->route('home');
     }
+
+
+    public function refuse(Request $request)
+    {
+        $userId = \Auth::user()->id;
+
+        try{
+
+            DB::beginTransaction();
+
+            if (isset($request->id)) {
+                $raffleId = (int)$request->id;
+
+                $rafflePrize = RafflePrizes::where('id', '=',$raffleId)->where('user_id', '=', $userId)->where('status', '=', 0)->first();
+                $rafflePrize->status = 1;
+                $rafflePrize->save();
+
+                if('product'==$rafflePrize->prize_type) {
+                    $product = PrizeProduct::where("id",$rafflePrize->prize)->first();
+                    $product->status = 0;
+                    $product->save();
+                }
+
+                if('money'==$rafflePrize->prize_type) {
+                    $maxTotal = PrizeMoney::latest('id')->first();
+                    $maxTotal->sum = $maxTotal->sum + $rafflePrize->prize;
+                    $maxTotal->save();
+                }
+            }
+
+            DB::commit();
+
+        } catch(\Exception $e){
+            DB::rollback();
+
+            echo $e->getMessage();
+        }
+
+        return redirect()->route('home');
+    }
 }
